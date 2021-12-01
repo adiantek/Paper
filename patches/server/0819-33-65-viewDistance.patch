@@ -1,0 +1,251 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Adrian Antkowiak <adiantek@gmail.com>
+Date: Wed, 1 Dec 2021 23:32:33 +0100
+Subject: [PATCH] 33 -> 65 (viewDistance)
+
+
+diff --git a/src/main/java/net/minecraft/server/level/ChunkHolder.java b/src/main/java/net/minecraft/server/level/ChunkHolder.java
+index 873a9767687ee78a852e2392d12bafa25e4ddca3..09e8225f7a76e95119e4a2097b07b950d1b537f1 100644
+--- a/src/main/java/net/minecraft/server/level/ChunkHolder.java
++++ b/src/main/java/net/minecraft/server/level/ChunkHolder.java
+@@ -471,7 +471,7 @@ public class ChunkHolder {
+             this.getFutureIfPresentUnchecked(ChunkStatus.FULL).thenAccept((either) -> {
+                 io.papermc.paper.util.TickThread.ensureTickThread("Async full status chunk future completion"); // Paper
+                 LevelChunk chunk = (LevelChunk)either.left().orElse(null);
+-                if (chunk != null && chunk.wasLoadCallbackInvoked() && ChunkHolder.this.ticketLevel > 33) { // Paper - only invoke unload if load was called
++                if (chunk != null && chunk.wasLoadCallbackInvoked() && ChunkHolder.this.ticketLevel > 65) { // Paper - only invoke unload if load was called
+                     // Paper  start - only schedule once, now the future is no longer completed as RIGHT if unloaded...
+                     if (ChunkHolder.this.unloadCallbackScheduled) {
+                         return;
+@@ -481,7 +481,7 @@ public class ChunkHolder {
+                     chunkStorage.callbackExecutor.execute(() -> {
+                         // Paper  start - only schedule once, now the future is no longer completed as RIGHT if unloaded...
+                         ChunkHolder.this.unloadCallbackScheduled = false;
+-                        if (ChunkHolder.this.ticketLevel <= 33) {
++                        if (ChunkHolder.this.ticketLevel <= 65) {
+                             return;
+                         }
+                         // Paper  end - only schedule once, now the future is no longer completed as RIGHT if unloaded...
+@@ -667,7 +667,7 @@ public class ChunkHolder {
+             this.getFutureIfPresentUnchecked(ChunkStatus.FULL).thenAccept((either) -> {
+                 io.papermc.paper.util.TickThread.ensureTickThread("Async full status chunk future completion"); // Paper
+                 LevelChunk chunk = (LevelChunk)either.left().orElse(null);
+-                if (chunk != null && ChunkHolder.this.oldTicketLevel <= 33 && !chunk.wasLoadCallbackInvoked()) { // Paper - ensure ticket level is set to loaded before calling, as now this can complete with ticket level > 33
++                if (chunk != null && ChunkHolder.this.oldTicketLevel <= 65 && !chunk.wasLoadCallbackInvoked()) { // Paper - ensure ticket level is set to loaded before calling, as now this can complete with ticket level > 65
+                     // Paper  start - only schedule once, now the future is no longer completed as RIGHT if unloaded...
+                     if (ChunkHolder.this.loadCallbackScheduled) {
+                         return;
+@@ -676,7 +676,7 @@ public class ChunkHolder {
+                     // Paper  end - only schedule once, now the future is no longer completed as RIGHT if unloaded...
+                     chunkStorage.callbackExecutor.execute(() -> {
+                         ChunkHolder.this.loadCallbackScheduled = false; // Paper  - only schedule once, now the future is no longer completed as RIGHT if unloaded...
+-                        if (ChunkHolder.this.oldTicketLevel <= 33) chunk.loadCallback(); // Paper "
++                        if (ChunkHolder.this.oldTicketLevel <= 65) chunk.loadCallback(); // Paper "
+                     });
+                 }
+             }).exceptionally((throwable) -> {
+@@ -692,11 +692,11 @@ public class ChunkHolder {
+     }
+ 
+     public static ChunkStatus getStatus(int level) {
+-        return level < 33 ? ChunkStatus.FULL : ChunkStatus.getStatusAroundFullChunk(level - 33);
++        return level < 65 ? ChunkStatus.FULL : ChunkStatus.getStatusAroundFullChunk(level - 65);
+     }
+ 
+     public static ChunkHolder.FullChunkStatus getFullChunkStatus(int distance) {
+-        return ChunkHolder.FULL_CHUNK_STATUSES[Mth.clamp(33 - distance + 1, (int) 0, ChunkHolder.FULL_CHUNK_STATUSES.length - 1)];
++        return ChunkHolder.FULL_CHUNK_STATUSES[Mth.clamp(65 - distance + 1, (int) 0, ChunkHolder.FULL_CHUNK_STATUSES.length - 1)];
+     }
+ 
+     public boolean wasAccessibleSinceLastSave() {
+@@ -802,7 +802,7 @@ public class ChunkHolder {
+         int priority = neighborPriority; // if we have a neighbor priority, use it
+         int myPriority = getMyPriority();
+ 
+-        if (priority == -1 || (ticketLevel <= 33 && priority > myPriority)) {
++        if (priority == -1 || (ticketLevel <= 65 && priority > myPriority)) {
+             priority = myPriority;
+         }
+ 
+@@ -811,7 +811,7 @@ public class ChunkHolder {
+ 
+     private int getMyPriority() {
+         if (priorityBoost == DistanceManager.URGENT_PRIORITY) {
+-            return 2; // Urgent - ticket level isn't always 31 so 33-30 = 3, but allow 1 more tasks to go below this for dependents
++            return 2; // Urgent - ticket level isn't always 31 so 65-30 = 3, but allow 1 more tasks to go below this for dependents
+         }
+         return ticketLevel - priorityBoost;
+     }
+diff --git a/src/main/java/net/minecraft/server/level/ChunkMap.java b/src/main/java/net/minecraft/server/level/ChunkMap.java
+index 7cb613103bca57c82418f4f968922f510819ee70..7ce4193ee3515d2a9d19741eb6fe0847f08a6771 100644
+--- a/src/main/java/net/minecraft/server/level/ChunkMap.java
++++ b/src/main/java/net/minecraft/server/level/ChunkMap.java
+@@ -119,8 +119,8 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+     private static final int CHUNK_SAVED_PER_TICK = 200;
+     private static final int CHUNK_SAVED_EAGERLY_PER_TICK = 20;
+     private static final int MIN_VIEW_DISTANCE = 3;
+-    public static final int MAX_VIEW_DISTANCE = 33;
+-    public static final int MAX_CHUNK_DISTANCE = 33 + ChunkStatus.maxDistance();
++    public static final int MAX_VIEW_DISTANCE = 65;
++    public static final int MAX_CHUNK_DISTANCE = 65 + ChunkStatus.maxDistance();
+     // Paper start - Don't copy
+     public final com.destroystokyo.paper.util.map.QueuedChangesMapLong2Object<ChunkHolder> updatingChunks = new com.destroystokyo.paper.util.map.QueuedChangesMapLong2Object<>();
+     // Paper end - Don't copy
+@@ -1118,7 +1118,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+             }
+             // Paper end - revert 1.17 chunk system changes
+             if (requiredStatus == ChunkStatus.LIGHT) {
+-                this.distanceManager.addTicket(TicketType.LIGHT, chunkcoordintpair, 33 + ChunkStatus.getDistance(ChunkStatus.LIGHT), chunkcoordintpair);
++                this.distanceManager.addTicket(TicketType.LIGHT, chunkcoordintpair, 65 + ChunkStatus.getDistance(ChunkStatus.LIGHT), chunkcoordintpair);
+             }
+ 
+             // Paper - revert 1.17 chunk system changes
+@@ -1192,7 +1192,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+         CompletableFuture<CompoundTag> chunkSaveFuture = this.level.asyncChunkTaskManager.getChunkSaveFuture(pos.x, pos.z);
+         // Paper start
+         ChunkHolder playerChunk = getUpdatingChunkIfPresent(pos.toLong());
+-        int chunkPriority = playerChunk != null ? playerChunk.requestedPriority : 33;
++        int chunkPriority = playerChunk != null ? playerChunk.requestedPriority : 65;
+         int priority = com.destroystokyo.paper.io.PrioritizedTaskQueue.NORMAL_PRIORITY;
+ 
+         if (chunkPriority <= 10) {
+@@ -1273,7 +1273,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+ 
+     protected void releaseLightTicket(ChunkPos pos) {
+         this.mainThreadExecutor.tell(Util.name(() -> {
+-            this.distanceManager.removeTicket(TicketType.LIGHT, pos, 33 + ChunkStatus.getDistance(ChunkStatus.LIGHT), pos);
++            this.distanceManager.removeTicket(TicketType.LIGHT, pos, 65 + ChunkStatus.getDistance(ChunkStatus.LIGHT), pos);
+         }, () -> {
+             return "release light ticket " + pos;
+         }));
+@@ -1568,7 +1568,7 @@ public class ChunkMap extends ChunkStorage implements ChunkHolder.PlayerProvider
+     }
+ 
+     public void setViewDistance(int watchDistance) {
+-        int j = Mth.clamp(watchDistance + 1, (int) 3, (int) 33);
++        int j = Mth.clamp(watchDistance + 1, (int) 3, (int) 65);
+ 
+         if (j != this.viewDistance) {
+             int k = this.viewDistance;
+diff --git a/src/main/java/net/minecraft/server/level/DistanceManager.java b/src/main/java/net/minecraft/server/level/DistanceManager.java
+index 451d5e9b5906e662a0c2e04b407068ea49d1089e..7a2e976806e7bb06079905b9ecb350ccf527d60e 100644
+--- a/src/main/java/net/minecraft/server/level/DistanceManager.java
++++ b/src/main/java/net/minecraft/server/level/DistanceManager.java
+@@ -41,16 +41,16 @@ public abstract class DistanceManager {
+ 
+     static final Logger LOGGER = LogManager.getLogger();
+     private static final int ENTITY_TICKING_RANGE = 2;
+-    static final int PLAYER_TICKET_LEVEL = 33 + ChunkStatus.getDistance(ChunkStatus.FULL) - 2;
++    static final int PLAYER_TICKET_LEVEL = 65 + ChunkStatus.getDistance(ChunkStatus.FULL) - 2;
+     private static final int INITIAL_TICKET_LIST_CAPACITY = 4;
+     private static final int ENTITY_TICKING_LEVEL_THRESHOLD = 32;
+-    private static final int BLOCK_TICKING_LEVEL_THRESHOLD = 33;
++    private static final int BLOCK_TICKING_LEVEL_THRESHOLD = 65;
+     final Long2ObjectMap<ObjectSet<ServerPlayer>> playersPerChunk = new Long2ObjectOpenHashMap();
+     public final Long2ObjectOpenHashMap<SortedArraySet<Ticket<?>>> tickets = new Long2ObjectOpenHashMap();
+     private final DistanceManager.ChunkTicketTracker ticketTracker = new DistanceManager.ChunkTicketTracker();
+     public static final int MOB_SPAWN_RANGE = 8; // private final ChunkMapDistance.b f = new ChunkMapDistance.b(8); // Paper - no longer used
+     private final TickingTracker tickingTicketsTracker = new TickingTracker();
+-    private final DistanceManager.PlayerTicketTracker playerTicketManager = new DistanceManager.PlayerTicketTracker(33);
++    private final DistanceManager.PlayerTicketTracker playerTicketManager = new DistanceManager.PlayerTicketTracker(65);
+     // Paper start use a queue, but still keep unique requirement
+     public final java.util.Queue<ChunkHolder> pendingChunkUpdates = new java.util.ArrayDeque<ChunkHolder>() {
+         @Override
+@@ -217,7 +217,7 @@ public abstract class DistanceManager {
+                 }
+                 ChunkHolder playerChunk = chunkMap.getUpdatingChunkIfPresent(i);
+                 if (!hasPlayer && playerChunk != null && playerChunk.isFullChunkReady()) {
+-                    Ticket<Long> delayUnload = new Ticket<Long>(TicketType.DELAY_UNLOAD, 33, i);
++                    Ticket<Long> delayUnload = new Ticket<Long>(TicketType.DELAY_UNLOAD, 65, i);
+                     delayUnload.delayUnloadBy = delayChunkUnloadsBy;
+                     delayUnload.setCreatedTick(this.ticketTickCounter);
+                     arraysetsorted.remove(delayUnload);
+@@ -264,7 +264,7 @@ public abstract class DistanceManager {
+     }
+ 
+     public <T> void addRegionTicket(TicketType<T> type, ChunkPos pos, int radius, T argument) {
+-        Ticket<T> ticket = new Ticket<>(type, 33 - radius, argument);
++        Ticket<T> ticket = new Ticket<>(type, 65 - radius, argument);
+         long j = pos.toLong();
+ 
+         this.addTicket(j, ticket);
+@@ -272,7 +272,7 @@ public abstract class DistanceManager {
+     }
+ 
+     public <T> void removeRegionTicket(TicketType<T> type, ChunkPos pos, int radius, T argument) {
+-        Ticket<T> ticket = new Ticket<>(type, 33 - radius, argument);
++        Ticket<T> ticket = new Ticket<>(type, 65 - radius, argument);
+         long j = pos.toLong();
+ 
+         this.removeTicket(j, ticket);
+@@ -442,7 +442,7 @@ public abstract class DistanceManager {
+     }
+ 
+     public boolean inBlockTickingRange(long chunkPos) {
+-        return this.tickingTicketsTracker.getLevel(chunkPos) < 33;
++        return this.tickingTicketsTracker.getLevel(chunkPos) < 65;
+     }
+ 
+     protected String getTicketDebugString(long pos) {
+diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+index 758bb0fae0f9ba9672250e4a65c27f1175eab12d..90c8d58dcf65e9e3006c68f4a05e0c51238e0c10 100644
+--- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
++++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+@@ -172,7 +172,7 @@ public class ServerChunkCache extends ChunkSource {
+             });
+             return;
+         }
+-        this.getChunkFutureAsynchronously(x, z, 33, ChunkHolder::getFullChunkFuture, onLoad);
++        this.getChunkFutureAsynchronously(x, z, 65, ChunkHolder::getFullChunkFuture, onLoad);
+     }
+ 
+     private void getChunkFutureAsynchronously(int x, int z, int ticketLevel, Function<ChunkHolder, CompletableFuture<Either<LevelChunk, ChunkHolder.ChunkLoadingFailure>>> futureGet, java.util.function.Consumer<LevelChunk> onLoad) {
+@@ -265,7 +265,7 @@ public class ServerChunkCache extends ChunkSource {
+     void getChunkAtAsynchronously(int chunkX, int chunkZ, int ticketLevel,
+                                   java.util.function.Consumer<ChunkAccess> consumer) {
+         this.getChunkAtAsynchronously(chunkX, chunkZ, ticketLevel, (ChunkHolder chunkHolder) -> {
+-            if (ticketLevel <= 33) {
++            if (ticketLevel <= 65) {
+                 return (CompletableFuture)chunkHolder.getFullChunkFuture();
+             } else {
+                 return chunkHolder.getOrScheduleFuture(ChunkHolder.getStatus(ticketLevel), ServerChunkCache.this.chunkMap);
+@@ -344,7 +344,7 @@ public class ServerChunkCache extends ChunkSource {
+ 
+     public final void getChunkAtAsynchronously(int chunkX, int chunkZ, ChunkStatus status, boolean gen, boolean allowSubTicketLevel, java.util.function.Consumer<ChunkAccess> onLoad) {
+         // try to fire sync
+-        int chunkStatusTicketLevel = 33 + ChunkStatus.getDistance(status);
++        int chunkStatusTicketLevel = 65 + ChunkStatus.getDistance(status);
+         ChunkHolder playerChunk = this.chunkMap.getUpdatingChunkIfPresent(io.papermc.paper.util.CoordinateUtils.getChunkKey(chunkX, chunkZ));
+         if (playerChunk != null) {
+             ChunkStatus holderStatus = playerChunk.getChunkHolderStatus();
+@@ -735,7 +735,7 @@ public class ServerChunkCache extends ChunkSource {
+         // Paper end
+         ChunkPos chunkcoordintpair = new ChunkPos(chunkX, chunkZ);
+         long k = chunkcoordintpair.toLong();
+-        int l = 33 + ChunkStatus.getDistance(leastStatus);
++        int l = 65 + ChunkStatus.getDistance(leastStatus);
+         ChunkHolder playerchunk = this.getVisibleChunkIfPresent(k);
+ 
+         // CraftBukkit start - don't add new ticket for currently unloading chunk
+@@ -790,7 +790,7 @@ public class ServerChunkCache extends ChunkSource {
+     @Override
+     public boolean hasChunk(int x, int z) {
+         ChunkHolder playerchunk = this.getVisibleChunkIfPresent((new ChunkPos(x, z)).toLong());
+-        int k = 33 + ChunkStatus.getDistance(ChunkStatus.FULL);
++        int k = 65 + ChunkStatus.getDistance(ChunkStatus.FULL);
+ 
+         return !this.chunkAbsent(playerchunk, k);
+     }
+diff --git a/src/main/java/net/minecraft/server/level/ServerLevel.java b/src/main/java/net/minecraft/server/level/ServerLevel.java
+index f055d25394d20afb208e8612fb31d77af141876b..b7e46b7e3b52a1c8288a503f28897e93e4f732a2 100644
+--- a/src/main/java/net/minecraft/server/level/ServerLevel.java
++++ b/src/main/java/net/minecraft/server/level/ServerLevel.java
+@@ -283,7 +283,7 @@ public class ServerLevel extends Level implements WorldGenLevel {
+ 
+         java.util.function.Consumer<net.minecraft.world.level.chunk.ChunkAccess> consumer = (net.minecraft.world.level.chunk.ChunkAccess chunk) -> {
+             if (chunk != null) {
+-                int ticketLevel = Math.max(33, chunkProvider.chunkMap.getUpdatingChunkIfPresent(chunk.getPos().toLong()).getTicketLevel());
++                int ticketLevel = Math.max(65, chunkProvider.chunkMap.getUpdatingChunkIfPresent(chunk.getPos().toLong()).getTicketLevel());
+                 ret.add(chunk);
+                 ticketLevels.add(ticketLevel);
+                 chunkProvider.addTicketAtLevel(TicketType.FUTURE_AWAIT, chunk.getPos(), ticketLevel, holderIdentifier);
